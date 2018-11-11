@@ -11,4 +11,5 @@ The Tweet dataset used in this project is openly provided by the [University of 
 # Authors
 
 [João Pedro Magalhães](https://github.com/jpedrocm)
+
 [Vinícius Cousseau](https://github.com/vinimoraesrc)
