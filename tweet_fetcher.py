@@ -31,7 +31,7 @@ def fetch_tweets(all_authors):
         statuses = api.GetStatuses(tweet_ids)
         tweets = [s.text for s in statuses]
         all_tweets.append(tweets)
-        write_tweets(tweets, "tweet_data/tweet_data_{}.txt".format(i))
+        write_tweets(tweets, "tweet_data/tweet_data_{0:03d}.txt".format(i))
         i += 1
     return all_tweets
 
