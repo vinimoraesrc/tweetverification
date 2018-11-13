@@ -12,7 +12,7 @@ def _read_tweets_from_author(filepath):
 	with open(filepath, "r", encoding="utf-8") as f:
 		data = [line.rstrip("\n") for line in f if line]
 
-	return data
+	return list(set(data))
 
 def _read_tweets_to_dataframe(path):
 
@@ -23,8 +23,8 @@ def _read_tweets_to_dataframe(path):
 	for author_id in range(1, 101):
 		cur_path = path_template.format(author_id)
 		if isfile(cur_path):
-			author_tweets = _read_tweets_from_author(cur_path)
-			author_data = pd.DataFrame(author_tweets, columns=["text"])
+			author_unique_tweets = _read_tweets_from_author(cur_path)
+			author_data = pd.DataFrame(author_unique_tweets, columns=["text"])
 			author_data["author_id"] = author_id
 			data = data.append(author_data, ignore_index=True, sort=True)
 
