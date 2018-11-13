@@ -102,3 +102,7 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# data
+data/tweet_data/
+data/datasets/
