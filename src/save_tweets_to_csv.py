@@ -37,7 +37,7 @@ def _read_tweets_to_dataframe(path):
 def main():
 	tweets = _read_tweets_to_dataframe("data/tweet_data/")
 	make_new_dir("data/datasets")
-	save_to_csv(tweets, "data/datasets/individual_tweets.csv", "tweets_id")
+	save_to_csv(tweets, "data/datasets/individual_tweets.csv", "tweet_id")
 
 if __name__ == "__main__":
 	main()
