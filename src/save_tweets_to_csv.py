@@ -1,8 +1,8 @@
 ###############################################################################
 
 import pandas as pd
-from os.path import isfile, isdir
-from os import mkdir
+from os.path import isfile
+from utils import make_new_dir, save_to_csv
 
 
 
@@ -32,19 +32,12 @@ def _read_tweets_to_dataframe(path):
 
 	return data
 
-def _save_to_csv(dataframe, dataset_dir):
 
-	if isdir(dataset_dir) == False:
-		mkdir(dataset_dir)
-
-	filepath = dataset_dir + "individual_tweets.csv"
-
-	dataframe.to_csv(filepath, index_label="tweet_id", encoding="utf-8")
 
 def main():
 	tweets = _read_tweets_to_dataframe("data/tweet_data/")
-	_save_to_csv(tweets, "data/datasets/")
-
+	make_new_dir("data/datasets")
+	save_to_csv(tweets, "data/datasets/individual_tweets.csv", "tweets_id")
 
 if __name__ == "__main__":
 	main()
