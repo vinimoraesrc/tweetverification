@@ -3,6 +3,7 @@
 import pandas as pd
 from os.path import isfile
 from utils import make_new_dir, save_to_csv
+from html import unescape
 
 
 
@@ -10,7 +11,7 @@ def _read_tweets_from_author(filepath):
 	data = None
 
 	with open(filepath, "r", encoding="utf-8") as f:
-		data = [line.rstrip("\n") for line in f]
+		data = [unescape(line.rstrip("\n")) for line in f]
 		data = [line for line in data if line]
 
 	return list(set(data))
