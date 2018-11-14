@@ -24,9 +24,10 @@ def _read_tweets_to_dataframe(path):
 		cur_path = path_template.format(author_id)
 		if isfile(cur_path):
 			author_unique_tweets = _read_tweets_from_author(cur_path)
-			author_data = pd.DataFrame(author_unique_tweets, columns=["text"])
-			author_data["author_id"] = author_id
-			data = data.append(author_data, ignore_index=True, sort=True)
+			if len(author_unique_tweets) >= 2000:
+				author_data = pd.DataFrame(author_unique_tweets, columns=["text"])
+				author_data["author_id"] = author_id
+				data = data.append(author_data, ignore_index=True, sort=True)
 
 	data.drop_duplicates(subset="text", inplace=True)
 
