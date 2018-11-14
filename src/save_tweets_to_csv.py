@@ -20,7 +20,7 @@ def _read_tweets_from_author(filepath, drop_rt):
 
 	return data
 
-def _read_tweets_to_dataframe(path, drop_rt):
+def _read_tweets_to_dataframe(path, drop_rt, min_nb_tweets):
 
 	data = pd.DataFrame(columns=["text", "author_id"])
 
@@ -32,7 +32,7 @@ def _read_tweets_to_dataframe(path, drop_rt):
 			author_tweets = _read_tweets_from_author(cur_path, drop_rt)
 			author_data = pd.DataFrame(author_tweets, columns=["text"])
 			author_data.drop_duplicates(subset="text", inplace=True)
-			if len(author_data) >= 2000:
+			if len(author_data) >= min_nb_tweets:
 				author_data["author_id"] = author_id
 				data = data.append(author_data, ignore_index=True, sort=True)
 
@@ -41,7 +41,7 @@ def _read_tweets_to_dataframe(path, drop_rt):
 
 
 def main():
-	tweets = _read_tweets_to_dataframe("data/tweet_data/", True)
+	tweets = _read_tweets_to_dataframe("data/tweet_data/", True, 2000)
 	make_new_dir("data/datasets")
 	save_to_csv(tweets, "data/datasets/individual_tweets.csv", "tweet_id")
 
