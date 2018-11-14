@@ -10,7 +10,8 @@ def _read_tweets_from_author(filepath):
 	data = None
 
 	with open(filepath, "r", encoding="utf-8") as f:
-		data = [line.rstrip("\n") for line in f if line]
+		data = [line.rstrip("\n") for line in f]
+		data = [line for line in data if line]
 
 	return list(set(data))
 
