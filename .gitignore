@@ -102,3 +102,8 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Data directories
+embeddings/
+tweet_data/
+tweet_data_remake/
