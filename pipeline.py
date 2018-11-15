@@ -83,7 +83,7 @@ def pre_process_pairs(tweet_pairs):
     labels = tweet_pairs[2]
     return pad_a, pad_b, labels
 
-def build_model(vocab_size, embedding_matrix):
+def build_qian_model(vocab_size, embedding_matrix):
     tweet_a = Input(shape=(TWEET_LENGTH,))
     tweet_b = Input(shape=(TWEET_LENGTH,))
 
@@ -115,6 +115,7 @@ def read_pairs(path):
     # Placeholder
     return [["a"], ["b"], [True]]
 
+# TODO: Add command-line args
 def main():
     print("Reading tweet data...")
     tweets = read_data("")
@@ -130,7 +131,7 @@ def main():
     print("Done!")
 
     print("Creating model...")
-    model = build_model(len(word_index), embedding_matrix)
+    model = build_qian_model(len(word_index), embedding_matrix)
     print("Done!")
     
     pairs = read_pairs("")
