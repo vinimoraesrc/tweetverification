@@ -24,7 +24,7 @@ def _read_tweets_to_dataframe(path, drop_rt, min_nb_tweets):
 
 	data = pd.DataFrame(columns=["text", "author_id"])
 
-	path_template = path + "tweet_data_{:02}.txt"
+	path_template = path + "tweet_data_{}.txt"
 
 	for author_id in range(1, 101):
 		cur_path = path_template.format(author_id)
