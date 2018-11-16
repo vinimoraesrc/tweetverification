@@ -6,10 +6,14 @@ from collections import Counter
 
 
 
-def _read_tweets_without_text(filepath):
+def _read_tweets(filepath):
 	dataframe = pd.read_csv(filepath, index_col="tweet_id", encoding="utf-8")
-	dataframe.drop(columns=["text"], inplace=True)
 	return dataframe
+
+def _extract_texts(dataframe):
+	texts = dataframe["text"]
+	dataframe.drop(columns=["text"], inplace=True)
+	return texts
 
 def _select_authors(tweets, nb_authors, previous_authors, mode):
 	authors = pd.Series(tweets["author_id"].unique())
@@ -88,7 +92,7 @@ def _create_positive_examples(df, nb_ocurrences):
 														author_id)
 		pos_df = pos_df.append(pos_examples, ignore_index=True)
 
-	pos_df["label"] = 1
+	pos_df["label"] = True
 	return pos_df
 
 def _create_negative_examples(df, nb_ocurrences):
@@ -109,7 +113,7 @@ def _create_negative_examples(df, nb_ocurrences):
 
 	#	neg_df = neg_df.append(neg_examples, ignore_index=True)
 
-	neg_df["label"] = 0
+	neg_df["label"] = False
 	return neg_df
 
 def _pair_tweets(tweets, nb_authors, previous_authors, author_mode, 
@@ -129,9 +133,23 @@ def _pair_tweets(tweets, nb_authors, previous_authors, author_mode,
 	return (selected_authors.tolist(), selected_tweets.index.tolist(), 
 		positive.append(negative, ignore_index=True, sort=True))
 
+def _convert_format(pairs, texts):
+
+	tweets_a = pairs["tweet_id1"].tolist()
+	texts_a = [texts.loc[i] for i in tweets_a]
+	tweets_b = pairs["tweet_id2"].tolist()
+	texts_b = [texts.loc[i] for i in tweets_b]
+
+	labels = pairs["label"].tolist()
+
+	converted = pd.DataFrame(columns=["tweets_a", "tweets_b", "label"])
+	converted.loc[0] = [texts_a, texts_b, labels]
+	return converted
+
+
 def _create_set(tweets, set_name, index_name, nb_authors, previous_authors,
 				author_mode, nb_tweets_per_author, nb_pos_pairs_per_tweet,
-				nb_neg_pairs_per_tweet, previous_tweets, tweet_mode):
+				nb_neg_pairs_per_tweet, previous_tweets, tweet_mode, texts):
 
 	authors, tweet_ids, pairs = _pair_tweets(tweets, nb_authors,
 								  previous_authors,
@@ -139,24 +157,28 @@ def _create_set(tweets, set_name, index_name, nb_authors, previous_authors,
 								  nb_pos_pairs_per_tweet,
 								  nb_neg_pairs_per_tweet,
 								  previous_tweets, tweet_mode)
-	save_to_csv(pairs, "data/datasets/"+set_name+".csv", index_name)
+	dataset = _convert_format(pairs, texts)
+	save_to_csv(dataset, "data/datasets/"+set_name+".csv", index_name)
 
 	return authors, tweet_ids
 
 
 def main():
-	index_name = "pair_id"
+	index_name = None
 
-	tweets = _read_tweets_without_text("data/datasets/individual_tweets.csv")
+	tweets = _read_tweets("data/datasets/individual_tweets.csv")
+	texts = _extract_texts(tweets)
 
 	train_authors, train_tweet_ids = _create_set(tweets, "train", index_name,
 												 60, None, None,
 												 500, 10, 10,
-												 None, None)
+												 None, None,
+												 texts)
 	val_authors, val_tweet_ids = _create_set(tweets, "val", index_name,
 												 10, train_authors, "disjoint",
 												 500, 10, 10,
-												 train_tweet_ids, "disjoint")
+												 train_tweet_ids, "disjoint",
+												 texts)
 
 	train_authors = set(train_authors)
 	train_authors.update(val_authors)
@@ -169,7 +191,8 @@ def main():
 	_, _ = _create_set(tweets, "test", index_name,
 					   20, train_authors, "disjoint",
 					   500, 10, 10,
-					   train_tweet_ids, "disjoint")
+					   train_tweet_ids, "disjoint",
+					   texts)
 
 
 if __name__ == "__main__":
