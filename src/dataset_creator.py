@@ -93,7 +93,8 @@ def _create_positive_examples(df, nb_ocurrences):
 		pos_df = pos_df.append(pos_examples, ignore_index=True)
 
 	pos_df["label"] = True
-	return pos_df
+
+	return pos_df.sample(frac=1)
 
 def _create_negative_examples(df, nb_ocurrences):
 	df = df.sample(frac=1)
@@ -114,7 +115,8 @@ def _create_negative_examples(df, nb_ocurrences):
 	#	neg_df = neg_df.append(neg_examples, ignore_index=True)
 
 	neg_df["label"] = False
-	return neg_df
+
+	return neg_df.sample(frac=1)
 
 def _pair_tweets(tweets, nb_authors, previous_authors, author_mode, 
 				 nb_tweets_per_author, nb_pos_pairs_per_tweet, 
@@ -130,8 +132,11 @@ def _pair_tweets(tweets, nb_authors, previous_authors, author_mode,
 	negative = _create_negative_examples(selected_tweets,
 										 nb_neg_pairs_per_tweet)
 
+	all_pairs = positive.append(negative, ignore_index=True, sort=True)
+	all_pairs = all_pairs.sample(frac=1)
+
 	return (selected_authors.tolist(), selected_tweets.index.tolist(), 
-		positive.append(negative, ignore_index=True, sort=True))
+			all_pairs)
 
 def _convert_format(pairs, texts):
 
