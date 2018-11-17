@@ -104,14 +104,18 @@ def _create_positive_examples(df, nb_ocurrences):
 	pos_df = pos_df.sample(frac=1)
 	pos_df["label"] = True
 
+	print("Positive")
+	print(len(pos_df))
+
 	return pos_df
 
 def _try_add_neg_pair(author_id1, tweet_id1, author_id2, pairs, rem_data,
-					  counts, max_nb):
+					  counts, max_nb, nb_authors):
 	added = False
 	tweet_ids2 = rem_data[rem_data["author_id"]==author_id2]
+	has_tweets = len(tweet_ids2) > 0
 
-	if len(tweet_ids2) > 0:
+	if has_tweets:
 		tweet_id2 = tweet_ids2.sample(n=1).index[0]
 
 		if counts[author_id2][tweet_id2] < max_nb:
@@ -122,37 +126,47 @@ def _try_add_neg_pair(author_id1, tweet_id1, author_id2, pairs, rem_data,
 				pairs.add(pair)
 				counts[author_id2][tweet_id2]+=1
 				added = True
+			elif nb_authors==1 and len(tweet_ids2) <= 5:
+				has_tweets = False
 
 		if counts[author_id2][tweet_id2]==max_nb:
 			rem_data.drop(index=tweet_id2, inplace=True)
 
-	return added
+	return added, has_tweets
 
 def _create_author_negative_examples(df, pairs, tweets_counts, nb_ocurrences,
 									 author_id1):
-	#start = time.time()
 
 	tweet_count = tweets_counts.pop(author_id1)
 	tweet_ids1 = df[df["author_id"]==author_id1].index
 	rem_data = df[df["author_id"].isin(tweets_counts)]
-	rem_authors = rem_data["author_id"].unique()
+	rem_authors = rem_data["author_id"].unique().tolist()
 
-	if len(rem_authors) > 0:
-		i = 0
-		for tweet_id1 in tweet_ids1:
-			nb = 0 if tweet_id1 not in tweet_count else tweet_count[tweet_id1]
+	i = 0
+	for tweet_id1 in tweet_ids1:
+		if len(rem_authors)==0:
+				break
 
-			while nb < nb_ocurrences:
-				author_id2 = rem_authors[i]
-				added = _try_add_neg_pair(author_id1, tweet_id1, author_id2,
-										  pairs, rem_data, tweets_counts, 
-										  nb_ocurrences)
+		nb = 0 if tweet_id1 not in tweet_count else tweet_count[tweet_id1]
+
+		while nb < nb_ocurrences:
+			author_id2 = rem_authors[i]
+			added, has_tweets = _try_add_neg_pair(author_id1, tweet_id1,
+												  author_id2, pairs, 
+												  rem_data, tweets_counts, 
+										  		  nb_ocurrences, 
+										  		  len(rem_authors))
+			if not has_tweets:
+				rem_authors.remove(author_id2)
+				if len(rem_authors)==0:
+					break
+				else:
+					i = i%len(rem_authors)
+			elif added:
+				nb+=1
 				i = (i+1)%len(rem_authors)
-				if added:
-					nb+=1
 
 	df.drop(index=tweet_ids1, inplace=True)
-	#print(time.time() - start)
 
 def _create_negative_examples(df, nb_ocurrences):
 	df = df.sample(frac=1)
@@ -169,6 +183,9 @@ def _create_negative_examples(df, nb_ocurrences):
 
 	neg_df = neg_df.sample(frac=1)
 	neg_df["label"] = False
+
+	print("Negative")
+	print(len(neg_df))
 
 	return _swap_half_ids(neg_df)
 
@@ -188,8 +205,9 @@ def _pair_tweets(tweets, nb_authors, previous_authors, author_mode,
 
 	all_pairs = positive.append(negative, ignore_index=True, sort=True)
 	all_pairs = all_pairs.sample(frac=1)
-	#x=all_pairs["tweet_id1"].value_counts().add(all_pairs["tweet_id2"].value_counts(), fill_value=0)
-	#print(x[x!=10])
+
+	print("Total")
+	print(len(all_pairs))
 
 	return (selected_authors.tolist(), selected_tweets.index.tolist(), 
 			all_pairs)
@@ -231,17 +249,15 @@ def main():
 	tweets = _read_tweets("data/datasets/individual_tweets.csv")
 	texts = _extract_texts(tweets)
 
-	train_authors, train_tweet_ids = _create_set(tweets, "train", index_name,
-												 10, None, None,
-												 500, 5, 5,
+	train_authors, train_tweet_ids = _create_set(tweets, "same_authors_train", index_name,
+												 90, None, None,
+												 700, 5, 5,
 												 None, None,
 												 texts)
 
-	#sys.exit()
-
-	val_authors, val_tweet_ids = _create_set(tweets, "val", index_name,
-											 10, train_authors, "disjoint",
-											 500, 5, 5,
+	val_authors, val_tweet_ids = _create_set(tweets, "same_authors_val", index_name,
+											 90, train_authors, "same",
+											 100, 5, 5,
 											 train_tweet_ids, "disjoint",
 											 texts)
 
@@ -253,9 +269,9 @@ def main():
 	train_tweet_ids.update(val_tweet_ids)
 	train_tweet_ids = list(train_tweet_ids)
 
-	_, _ = _create_set(tweets, "test", index_name,
-					   20, train_authors, "disjoint",
-					   500, 5, 5,
+	_, _ = _create_set(tweets, "same_authors_test", index_name,
+					   90, train_authors, "same",
+					   200, 5, 5,
 					   train_tweet_ids, "disjoint",
 					   texts)
 
