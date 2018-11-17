@@ -71,7 +71,7 @@ def _try_add_pos_pair(id1, id2, count, pairs, max_nb):
 def _create_author_positive_examples(df, nb_ocurrences, author_id):
 
 	ids = df.index.tolist()
-	count = Counter({tweet_id: 0 for tweet_id in ids})
+	tweet_count = Counter({tweet_id: 0 for tweet_id in ids})
 
 	pairs = set()
 
@@ -79,10 +79,10 @@ def _create_author_positive_examples(df, nb_ocurrences, author_id):
 		for start in range(len(ids)):
 			id_1 = ids[start]
 			id_2 = ids[(start+jump)%len(ids)]
-			_try_add_pos_pair(id_1, id_2, count, pairs, nb_ocurrences)
-			if len(count) <= 1:
+			_try_add_pos_pair(id_1, id_2, tweet_count, pairs, nb_ocurrences)
+			if len(tweet_count) <= 1:
 				break
-		if len(count) <= 1:
+		if len(tweet_count) <= 1:
 			break
 
 	pos = pd.DataFrame(list(pairs), columns=["tweet_id1", "tweet_id2"])
@@ -135,7 +135,7 @@ def _create_author_negative_examples(df, pairs, tweets_counts, nb_ocurrences,
 	tweet_count = tweets_counts.pop(author_id1)
 	tweet_ids1 = df[df["author_id"]==author_id1].index
 	rem_data = df[df["author_id"].isin(tweets_counts)]
-	rem_authors = list(tweets_counts.keys())
+	rem_authors = rem_data["author_id"].unique()
 
 	if len(rem_authors) > 0:
 		i = 0
@@ -218,6 +218,7 @@ def _create_set(tweets, set_name, index_name, nb_authors, previous_authors,
 								  nb_pos_pairs_per_tweet,
 								  nb_neg_pairs_per_tweet,
 								  previous_tweets, tweet_mode)
+
 	dataset = _convert_format(pairs, texts)
 	save_to_csv(dataset, "data/datasets/"+set_name+".csv", index_name)
 
@@ -232,15 +233,17 @@ def main():
 
 	train_authors, train_tweet_ids = _create_set(tweets, "train", index_name,
 												 10, None, None,
-												 200, 5, 5,
+												 500, 5, 5,
 												 None, None,
 												 texts)
 
+	#sys.exit()
+
 	val_authors, val_tweet_ids = _create_set(tweets, "val", index_name,
-												 10, train_authors, "disjoint",
-												 200, 5, 5,
-												 train_tweet_ids, "disjoint",
-												 texts)
+											 10, train_authors, "disjoint",
+											 500, 5, 5,
+											 train_tweet_ids, "disjoint",
+											 texts)
 
 	train_authors = set(train_authors)
 	train_authors.update(val_authors)
@@ -251,8 +254,8 @@ def main():
 	train_tweet_ids = list(train_tweet_ids)
 
 	_, _ = _create_set(tweets, "test", index_name,
-					   10, train_authors, "disjoint",
-					   200, 5, 5,
+					   20, train_authors, "disjoint",
+					   500, 5, 5,
 					   train_tweet_ids, "disjoint",
 					   texts)
 
