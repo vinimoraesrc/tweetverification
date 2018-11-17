@@ -3,6 +3,7 @@
 import pandas as pd
 from utils import save_to_csv
 from collections import Counter
+import time
 
 
 
@@ -42,6 +43,16 @@ def _select_tweets_per_author(tweets, authors, nb_per_author, previous_tweets,
 	
 	return sample
 
+def _swap_half_ids(dataframe):
+	half = int(len(dataframe)/2)
+
+	upper_half = dataframe.iloc[:half,:]
+	bottom_half = dataframe.iloc[half:,:]
+	swapped = bottom_half.loc[:,["tweet_id2","tweet_id1"]].values
+	bottom_half.loc[:,["tweet_id1","tweet_id2"]] = swapped
+
+	return upper_half.append(bottom_half, verify_integrity=True, sort=True)
+
 def _try_remove_from_count(idx, count, max_nb):
 	if count[idx]==max_nb:
 		del count[idx]
@@ -75,15 +86,13 @@ def _create_author_positive_examples(df, nb_ocurrences, author_id):
 			break
 
 	pos = pd.DataFrame(list(pairs), columns=["tweet_id1", "tweet_id2"])
-	pos["author_id1"] = author_id
-	pos["author_id2"] = author_id
+
 	return pos
 
 def _create_positive_examples(df, nb_ocurrences):
 	df = df.sample(frac=1)
 
-	pos_df = pd.DataFrame(columns=["tweet_id1", "tweet_id2", "author_id1",
-								   "author_id2"])
+	pos_df = pd.DataFrame(columns=["tweet_id1", "tweet_id2"])
 
 	for author_id in df["author_id"].unique():
 		author_data = df[df["author_id"]==author_id]
@@ -92,31 +101,76 @@ def _create_positive_examples(df, nb_ocurrences):
 														author_id)
 		pos_df = pos_df.append(pos_examples, ignore_index=True)
 
+	pos_df = pos_df.sample(frac=1)
 	pos_df["label"] = True
 
-	return pos_df.sample(frac=1)
+	return pos_df
+
+def _try_add_neg_pair(author_id1, tweet_id1, author_id2, pairs, rem_data,
+					  counts, max_nb):
+	added = False
+	tweet_ids2 = rem_data[rem_data["author_id"]==author_id2]
+
+	if len(tweet_ids2) > 0:
+		tweet_id2 = tweet_ids2.sample(n=1).index[0]
+
+		if counts[author_id2][tweet_id2] < max_nb:
+			pair = (tweet_id1, tweet_id2)
+			pair_rev = (tweet_id2, tweet_id1)
+
+			if pair not in pairs and pair_rev not in pairs:
+				pairs.add(pair)
+				counts[author_id2][tweet_id2]+=1
+				added = True
+
+		if counts[author_id2][tweet_id2]==max_nb:
+			rem_data.drop(index=tweet_id2, inplace=True)
+
+	return added
+
+def _create_author_negative_examples(df, pairs, tweets_counts, nb_ocurrences,
+									 author_id1):
+	#start = time.time()
+
+	tweet_count = tweets_counts.pop(author_id1)
+	tweet_ids1 = df[df["author_id"]==author_id1].index
+	rem_data = df[df["author_id"].isin(tweets_counts)]
+	rem_authors = list(tweets_counts.keys())
+
+	if len(rem_authors) > 0:
+		i = 0
+		for tweet_id1 in tweet_ids1:
+			nb = 0 if tweet_id1 not in tweet_count else tweet_count[tweet_id1]
+
+			while nb < nb_ocurrences:
+				author_id2 = rem_authors[i]
+				added = _try_add_neg_pair(author_id1, tweet_id1, author_id2,
+										  pairs, rem_data, tweets_counts, 
+										  nb_ocurrences)
+				i = (i+1)%len(rem_authors)
+				if added:
+					nb+=1
+
+	df.drop(index=tweet_ids1, inplace=True)
+	#print(time.time() - start)
 
 def _create_negative_examples(df, nb_ocurrences):
 	df = df.sample(frac=1)
 
-	neg_df = pd.DataFrame(columns=["tweet_id1", "tweet_id2", "author_id1",
-								   "author_id2"])
-
 	author_ids =  df["author_id"].unique().tolist()
-	count = {author_id: Counter() for author_id in author_ids}
+	counts = {author_id: Counter() for author_id in author_ids}
 
-	quads = set()
+	pairs = set()
 
-	#for author_id in author_ids:
-	#	neg_examples = _create_author_negative_examples(df, quads, count,
-	#													nb_ocurrences,
-	#													author_id)
+	[_create_author_negative_examples(df, pairs, counts, nb_ocurrences,
+		author_id) for author_id in author_ids]
 
-	#	neg_df = neg_df.append(neg_examples, ignore_index=True)
+	neg_df = pd.DataFrame(list(pairs), columns=["tweet_id1", "tweet_id2"])
 
+	neg_df = neg_df.sample(frac=1)
 	neg_df["label"] = False
 
-	return neg_df.sample(frac=1)
+	return _swap_half_ids(neg_df)
 
 def _pair_tweets(tweets, nb_authors, previous_authors, author_mode, 
 				 nb_tweets_per_author, nb_pos_pairs_per_tweet, 
@@ -134,6 +188,8 @@ def _pair_tweets(tweets, nb_authors, previous_authors, author_mode,
 
 	all_pairs = positive.append(negative, ignore_index=True, sort=True)
 	all_pairs = all_pairs.sample(frac=1)
+	#x=all_pairs["tweet_id1"].value_counts().add(all_pairs["tweet_id2"].value_counts(), fill_value=0)
+	#print(x[x!=10])
 
 	return (selected_authors.tolist(), selected_tweets.index.tolist(), 
 			all_pairs)
@@ -175,13 +231,14 @@ def main():
 	texts = _extract_texts(tweets)
 
 	train_authors, train_tweet_ids = _create_set(tweets, "train", index_name,
-												 60, None, None,
-												 500, 10, 10,
+												 10, None, None,
+												 200, 5, 5,
 												 None, None,
 												 texts)
+
 	val_authors, val_tweet_ids = _create_set(tweets, "val", index_name,
 												 10, train_authors, "disjoint",
-												 500, 10, 10,
+												 200, 5, 5,
 												 train_tweet_ids, "disjoint",
 												 texts)
 
@@ -194,8 +251,8 @@ def main():
 	train_tweet_ids = list(train_tweet_ids)
 
 	_, _ = _create_set(tweets, "test", index_name,
-					   20, train_authors, "disjoint",
-					   500, 10, 10,
+					   10, train_authors, "disjoint",
+					   200, 5, 5,
 					   train_tweet_ids, "disjoint",
 					   texts)
 
