@@ -88,6 +88,7 @@ def get_metrics(clf, test_set):
 def main():
     args = get_parser().parse_args()
     print("Using variation: " + str(args.variation))
+    print("Loading full data...")
     word_index, embeddings_matrix, corpus = pre_process.pre_processing_pipeline(
         args.tweets_path, args.embeddings_path)
 
@@ -99,6 +100,7 @@ def main():
     val_pre_processed = pre_process.pre_process_pairs(val, word_index)
     test_pre_processed = pre_process.pre_process_pairs(test, word_index)
 
+    print("Building variation, if any...")
     chosen_matrix = get_matrix_from_variation(
         args.variation, corpus, word_index, embeddings_matrix)
 
