@@ -8,7 +8,6 @@ import numpy as np
 from regexes import preprocess_glove_ruby_port_authors
 from keras.preprocessing.sequence import pad_sequences
 from contractions import remove_contractions_from_list
-sys.path.append('../')
 
 tweet_length = 18
 embedding_dim = 50
@@ -43,6 +42,7 @@ def remove_rts(tweets):
 
 
 def tokenize_tweets(tweets):
+    sys.path.append('.')
     import twokenize
     decoded = [x.replace("\\n", "\n") for x in tweets]
     ttweets = [twokenize.tokenizeRawTweetText(x) for x in decoded]
@@ -183,7 +183,7 @@ def pre_process_pairs(tweet_pairs, word_index):
         tokenized_a, word_index), pre_process(
         tokenized_b, word_index)
     pad_a, pad_b = pad_sequences(
-        pre_a, maxlen=140), pad_sequences(
+        pre_a, maxlen=tweet_length), pad_sequences(
         pre_b, maxlen=tweet_length)
     labels = tweet_pairs[2]
     return pad_a, pad_b, labels
@@ -193,7 +193,7 @@ def pre_processing_pipeline(tweets_path, embeddings_path):
     tweets = read_tweets(tweets_path)
     tweets_without_RT = remove_rts(tweets)
     tokenized_tweets = [tokenize_tweets(x) for x in tweets_without_RT]
-    tokenized_filtered = perform_all_filters(tokenized_tweets)
+    tokenized_filtered = [perform_all_filters(x) for x in tokenized_tweets]
     flat_vocab = [
         token for author in tokenized_filtered for tweet in author
         for token in tweet]

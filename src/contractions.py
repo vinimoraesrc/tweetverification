@@ -1,3 +1,5 @@
+import re
+
 contractions = {
   "ain't": "aint",
   "aren't": "arent",
