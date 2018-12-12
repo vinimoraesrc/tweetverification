@@ -203,4 +203,5 @@ def pre_processing_pipeline(tweets_path, embeddings_path):
         word_index[word] = index
     embeddings_index = build_embeddings_index(embeddings_path)
     embeddings_matrix = build_embeddings_matrix(embeddings_index, word_index)
-    return word_index, embeddings_matrix
+    corpus = [x for sublist in tokenized_filtered for x in sublist]
+    return word_index, embeddings_matrix, corpus

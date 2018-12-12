@@ -2,9 +2,22 @@ from keras.callbacks import EarlyStopping, ReduceLROnPlateau, CSVLogger
 from sklearn import metrics
 import numpy as np
 import argparse
+from enum import Enum
 import pre_process
 import dataset_loader
 import siamese_models
+import variations
+
+
+class Variation(Enum):
+    none = 'none'
+    fasttext = 'fasttext'
+    meta = 'meta'
+    idf = 'idf'
+
+    def __str__(self):
+        return self.value
+
 
 callbacks = [
     EarlyStopping(min_delta=1e-3, patience=2, verbose=1),
@@ -38,8 +51,30 @@ def get_parser():
         "test_path",
         type=str,
         help='path from where the test set pairs should be read')
+    parser.add_argument(
+        "--variation",
+        default=Variation.none,
+        type=Variation,
+        choices=list(Variation),
+        help='model variation. Can be none, fasttext, meta, or idf')
 
     return parser
+
+
+def get_matrix_from_variation(variation, corpus, word_index, base_matrix):
+    if variation is Variation.none:
+        return base_matrix
+    elif variation is Variation.fasttext:
+        ft = variations.build_fasttext(corpus)
+        return variations.build_fasttext_matrix(ft, word_index)
+    elif variation is Variation.meta:
+        ft = variations.build_fasttext(corpus)
+        ft_matrix = variations.build_fasttext_matrix(ft, word_index)
+        return variations.build_meta_matrix(base_matrix, ft_matrix, word_index)
+    elif variation is Variation.idf:
+        return variations.build_idf_matrix(corpus, base_matrix, word_index)
+    else:
+        return base_matrix
 
 
 def get_metrics(clf, test_set):
@@ -52,7 +87,8 @@ def get_metrics(clf, test_set):
 
 def main():
     args = get_parser().parse_args()
-    word_index, embeddings_matrix = pre_process.pre_processing_pipeline(
+    print("Using variation: " + str(args.variation))
+    word_index, embeddings_matrix, corpus = pre_process.pre_processing_pipeline(
         args.tweets_path, args.embeddings_path)
 
     print("Loading and pre-processing data...")
@@ -63,10 +99,13 @@ def main():
     val_pre_processed = pre_process.pre_process_pairs(val, word_index)
     test_pre_processed = pre_process.pre_process_pairs(test, word_index)
 
+    chosen_matrix = get_matrix_from_variation(
+        args.variation, corpus, word_index, embeddings_matrix)
+
     print("Compiling models...")
-    ours = siamese_models.build_model(word_index, embeddings_matrix)
+    ours = siamese_models.build_model(word_index, chosen_matrix)
     comparable = siamese_models.build_comparable_model(
-        word_index, embeddings_matrix)
+        word_index, chosen_matrix)
 
     print("Training our model...")
     ours.fit(
